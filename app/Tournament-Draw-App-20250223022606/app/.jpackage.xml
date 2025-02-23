@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<jpackage-state version="21.0.3" platform="windows">
+  <app-version>1.0</app-version>
+  <main-launcher>Tournament-Draw-App-20250223022606</main-launcher>
+  <main-class>org.application.TournamentDrawApp</main-class>
+  <signed>false</signed>
+  <app-store>false</app-store></jpackage-state>

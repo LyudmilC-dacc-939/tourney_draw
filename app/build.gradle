@@ -1,0 +1,107 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.openjfx:javafx-controls:23.0.2"
+    implementation "org.openjfx:javafx-fxml:23.0.2"
+    implementation "org.openjfx:javafx-graphics:23.0.2"
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+    testImplementation libs.junit.jupiter.engine
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    implementation libs.guava
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+javafx {
+    version = "23.0.2"
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+//application {
+//    mainClass = 'org.application.TournamentDrawAppKt'
+//    tasks.named("startScripts") {
+//        dependsOn("copyDependencies")
+//    }
+//}
+
+application {
+    mainClass = 'org.application.TournamentDrawAppKt'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+task packageApp(type: Exec) {
+    group = 'Build'
+    description = 'Packages the JavaFX application as a native executable.'
+
+    doFirst {
+        delete fileTree("$projectDir") {
+            include "Tournament-Draw-App*/"
+        }
+    }
+
+    def javaFxSdkPath = "D:\\Programs\\Projects\\Java\\openjfx-23.0.2_windows-x64_bin-sdk\\javafx-sdk-23.0.2"
+    def timestamp = new Date().format('yyyyMMddHHmmss')
+    def outputDir = "Tournament-Draw-App-${timestamp}"
+
+    commandLine 'jpackage',
+            '--name', outputDir,
+            '--dest', "$projectDir",
+            '--type', 'app-image',
+            '--input', 'build/libs', // Input directory (relative to project)
+            '--main-jar', 'app.jar', // JAR name matches the output of `tasks.jar`
+            '--main-class', 'org.application.TournamentDrawApp',
+            '--module-path', "${javaFxSdkPath}/lib",
+            '--add-modules', 'javafx.controls,javafx.fxml',
+            '--java-options', '--enable-preview'
+    // Optional: '--icon', 'path/to/icon.ico'
+}
+
+
+//Works but gives an error when trying to open the already made .jar file
+//tasks.jar {
+//    manifest {
+//        attributes["Main-Class"] = application.mainClass.get()
+//    }
+//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+//    from {
+//        configurations.runtimeClasspath.asFileTree.matching {
+//            include "**/*.class"
+//            include "**/*.properties"
+//        }
+//    }
+//}
+
+tasks.jar {
+    archiveFileName = "app.jar" // Force the JAR name to "app.jar"
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    from(sourceSets.main.output)
+}
+
+//for a normal jar file which then needs jpackage, a 3rd party software to turn into executable like launch4j or Wix tools
+//jar {
+//    manifest {
+//        attributes 'Main-Class': 'org.application.TournamentDrawAppKt'
+//    }
+//}
+
