@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 repositories {
@@ -37,7 +38,7 @@ javafx {
 //}
 
 application {
-    mainClass = 'org.application.TournamentDrawAppKt'
+    mainClass.set("org.application.TournamentDrawAppKt")
 }
 
 tasks.named('test') {
@@ -71,6 +72,13 @@ task packageApp(type: Exec) {
     // Optional: '--icon', 'path/to/icon.ico'
 }
 
+tasks.withType(JavaExec).configureEach {
+    jvmArgs = [
+            '--enable-preview',
+            "-Dprism.verbose=true" // JavaFX debug
+    ]
+}
+
 
 //Works but gives an error when trying to open the already made .jar file
 //tasks.jar {
@@ -87,7 +95,7 @@ task packageApp(type: Exec) {
 //}
 
 tasks.jar {
-    archiveFileName = "app.jar" // Force the JAR name to "app.jar"
+    archiveFileName = "app.jar"
     manifest {
         attributes["Main-Class"] = application.mainClass.get()
     }
@@ -105,3 +113,20 @@ tasks.jar {
 //    }
 //}
 
+shadowJar {
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'org.application.TournamentDrawApp'
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'org.application.TournamentDrawApp',
+                'Class-Path': configurations.runtimeClasspath.files.collect {
+                    "lib/${it.name}"
+                }.join(' ')
+        )
+    }
+}

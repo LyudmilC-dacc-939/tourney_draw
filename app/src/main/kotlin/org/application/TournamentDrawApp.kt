@@ -1,147 +1,154 @@
-import javafx.application.Application
-import javafx.geometry.Insets
-import javafx.scene.Scene
-import javafx.scene.control.*
-import javafx.scene.layout.VBox
-import javafx.stage.Stage
+import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.GridLayout
+import java.awt.event.ActionEvent
+import javax.swing.*
 import kotlin.random.Random
 
-class TournamentDrawApp : Application() {
+class TournamentDrawApp : JFrame("Football Tournament Drawing") {
 
-    private val teams = mutableListOf<String>()
-    private val players = mutableListOf<String>()
+    init {
+        defaultCloseOperation = EXIT_ON_CLOSE
+        size = Dimension(500, 700)
+        layout = BorderLayout()
 
-    override fun start(primaryStage: Stage) {
-        primaryStage.title = "Football Tournament Drawing"
+        // Input components
+        val textAreaTeams = JTextArea().apply {
+            lineWrap = true
+            border = BorderFactory.createTitledBorder("Enter teams (one per line)")
+        }
 
-        // UI elements
-        val textAreaTeams = TextArea().apply { promptText = "Enter teams, one per line" }
-        val textAreaPlayers = TextArea().apply { promptText = "Enter players, one per line (for role-play draw)" }
-        val inputGroupSize = TextField().apply { promptText = "Teams per group" }
-        val inputNumPots = TextField().apply { promptText = "Number of Pots" }
-        val inputTeamsPerPot = TextField().apply { promptText = "Teams per pot" }
-        val resultArea = TextArea().apply { isEditable = false }
+        val textAreaPlayers = JTextArea().apply {
+            lineWrap = true
+            border = BorderFactory.createTitledBorder("Enter players (one per line)")
+        }
 
-        val buttonKnockout = Button("Draw Knockout").apply {
-            setOnAction {
+        val inputGroupSize = JTextField().apply {
+            border = BorderFactory.createTitledBorder("Teams per group")
+        }
+
+        val inputNumPots = JTextField().apply {
+            border = BorderFactory.createTitledBorder("Number of Pots")
+        }
+
+        val inputTeamsPerPot = JTextField().apply {
+            border = BorderFactory.createTitledBorder("Teams per pot")
+        }
+
+        val strictModeCheckbox = JCheckBox("Strict Mode (One team per pot per group)")
+
+        // Result area
+        val resultArea = JTextArea().apply {
+            isEditable = false
+            lineWrap = true
+            border = BorderFactory.createTitledBorder("Results")
+        }
+
+        // Buttons
+        val buttonKnockout = JButton("Draw Knockout").apply {
+            addActionListener {
                 val teamsList = textAreaTeams.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 if (teamsList.size < 2 || teamsList.size % 2 != 0) {
                     resultArea.text = "Number of teams must be even and at least 2."
                 } else {
                     val shuffledTeams = teamsList.shuffled(Random(System.currentTimeMillis()))
-                    val matches = shuffledTeams.chunked(2) { "${it[0]} vs ${it[1]}" }
-                    resultArea.text = matches.joinToString("\n")
+                    resultArea.text = shuffledTeams.chunked(2) { "${it[0]} vs ${it[1]}" }
+                        .joinToString("\n")
                 }
             }
         }
 
-        val buttonGroups = Button("Draw Groups").apply {
-            setOnAction {
+        val buttonGroups = JButton("Draw Groups").apply {
+            addActionListener {
                 val teamsList = textAreaTeams.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 val groupSize = inputGroupSize.text.toIntOrNull()
                 if (teamsList.isEmpty() || groupSize == null || groupSize < 2) {
                     resultArea.text = "Invalid input. Provide teams and a valid group size."
                 } else {
                     val shuffledTeams = teamsList.shuffled(Random(System.currentTimeMillis()))
-                    val groups = shuffledTeams.chunked(groupSize)
-                    resultArea.text = groups.joinToString("\n\n") { it.joinToString(", ") }
+                    resultArea.text = shuffledTeams.chunked(groupSize)
+                        .joinToString("\n\n") { it.joinToString(", ") }
                 }
             }
         }
 
-        val strictModeCheckbox = CheckBox("Strict Mode (One team per pot per group)").apply {
-            isSelected = false
-        }
-
-        val buttonGroupsByPots = Button("Draw Groups by Pots").apply {
-            setOnAction {
+        val buttonGroupsByPots = JButton("Draw Groups by Pots").apply {
+            addActionListener {
                 val teamsList = textAreaTeams.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 val numPots = inputNumPots.text.toIntOrNull()
                 val teamsPerPot = inputTeamsPerPot.text.toIntOrNull()
 
                 if (numPots == null || teamsPerPot == null || teamsList.size != numPots * teamsPerPot) {
                     resultArea.text = "Invalid input. Ensure total teams = numPots × teamsPerPot."
-                    return@setOnAction
+                    return@addActionListener
                 }
 
                 val pots = List(numPots) { i ->
-                    teamsList.subList(i * teamsPerPot, (i + 1) * teamsPerPot).shuffled(Random(System.currentTimeMillis())).toMutableList()
+                    teamsList.subList(i * teamsPerPot, (i + 1) * teamsPerPot)
+                        .shuffled(Random(System.currentTimeMillis()))
+                        .toMutableList()
                 }
 
                 val numGroups = teamsPerPot
                 val groups = List(numGroups) { mutableListOf<String>() }
 
                 if (strictModeCheckbox.isSelected) {
-
-                    val shuffledPots = pots.shuffled(Random(System.currentTimeMillis()))
-
-                    groups.forEach { it.clear() }
-
-                    for (pot in shuffledPots) {
-
+                    pots.shuffled(Random(System.currentTimeMillis())).forEach { pot ->
                         pot.shuffle(Random(System.currentTimeMillis()))
-
-                        for (i in pot.indices) {
-                            groups[i].add(pot[i])
-                        }
+                        pot.forEachIndexed { i, team -> groups[i].add(team) }
                     }
                 } else {
-                    // Non-Strict Mode: Randomly distribute teams from pots into groups
-                    val shuffledTeams = teamsList.shuffled(Random(System.currentTimeMillis()))
-
-                    //Reset groups
-                    groups.forEach { it.clear() }
-
-                    for (i in shuffledTeams.indices) {
-                        groups[i % numGroups].add(shuffledTeams[i]) // Add teams in a round-robin fashion
+                    teamsList.shuffled(Random(System.currentTimeMillis())).forEachIndexed { i, team ->
+                        groups[i % numGroups].add(team)
                     }
                 }
 
-                resultArea.text = groups.shuffled(Random(System.currentTimeMillis())) // Shuffle the groups to randomize the order
+                resultArea.text = groups.shuffled(Random(System.currentTimeMillis()))
                     .joinToString("\n") { "Group: ${it.joinToString(", ")}" }
             }
         }
 
-
-        val buttonRolePlay = Button("Assign Teams to Players").apply {
-            setOnAction {
-                // Logic to handle role-play draw
+        val buttonRolePlay = JButton("Assign Teams to Players").apply {
+            addActionListener {
                 val teamsList = textAreaTeams.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 val playersList = textAreaPlayers.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 if (teamsList.size != playersList.size) {
                     resultArea.text = "Number of teams and players must be equal."
                 } else {
                     val shuffledTeams = teamsList.shuffled(Random(System.currentTimeMillis()))
-                    val assignments = playersList.zip(shuffledTeams) { player, team -> "$player -> $team" }
-                    resultArea.text = assignments.joinToString("\n")
+                    resultArea.text = playersList.zip(shuffledTeams) { player, team -> "$player -> $team" }
+                        .joinToString("\n")
                 }
             }
         }
 
-        val layout = VBox(
-            10.0,
-            textAreaTeams,
-            textAreaPlayers,
-            inputGroupSize,
-            inputNumPots,
-            inputTeamsPerPot,
-            strictModeCheckbox,
-            buttonKnockout,
-            buttonGroups,
-            buttonGroupsByPots,
-            buttonRolePlay,
-            resultArea
-        ).apply {
-            padding = Insets(10.0)
+        // Layout
+        val inputPanel = JPanel().apply {
+            layout = GridLayout(0, 1, 10, 10)
+            add(textAreaTeams)
+            add(textAreaPlayers)
+            add(inputGroupSize)
+            add(inputNumPots)
+            add(inputTeamsPerPot)
+            add(strictModeCheckbox)
         }
 
+        val buttonPanel = JPanel().apply {
+            layout = GridLayout(1, 0, 10, 10)
+            add(buttonKnockout)
+            add(buttonGroups)
+            add(buttonGroupsByPots)
+            add(buttonRolePlay)
+        }
 
-        // Setting the scene
-        primaryStage.scene = Scene(layout, 400.0, 600.0)
-        primaryStage.show()
+        add(inputPanel, BorderLayout.NORTH)
+        add(JScrollPane(resultArea), BorderLayout.CENTER)
+        add(buttonPanel, BorderLayout.SOUTH)
     }
 }
 
 fun main() {
-    Application.launch(TournamentDrawApp::class.java)
+    SwingUtilities.invokeLater {
+        TournamentDrawApp().isVisible = true
+    }
 }
