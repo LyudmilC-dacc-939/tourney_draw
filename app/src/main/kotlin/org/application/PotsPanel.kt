@@ -4,19 +4,19 @@ import java.awt.BorderLayout
 import java.awt.GridLayout
 import javax.swing.*
 
-class PotsPanel(
-    teamsInput: String,
-    private val resultArea: JTextArea,
-    private val mainFrame: MainPanel
-) : JPanel(BorderLayout()) {
-
+class PotsPanel(private val coordinator: PanelCoordinator) : BasePanel() {
+    private val potsPanel = JPanel().apply { layout = BoxLayout(this, BoxLayout.Y_AXIS) }
     private val potsFields = mutableListOf<JTextArea>()
+    private val resultArea = JTextArea(10, 30).apply {
+        isEditable = false
+        lineWrap = true
+        border = BorderFactory.createTitledBorder("Draw Results")
+    }
     private val numPotsField = JTextField().apply {
         border = BorderFactory.createTitledBorder("Number of Pots (2-8)")
     }
 
     init {
-        // Top panel for number of pots
         val topPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(numPotsField)
@@ -32,86 +32,69 @@ class PotsPanel(
             })
         }
 
-        // Center panel for pots input
-        val potsPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        }
-
-        // Bottom panel for draw and return buttons
         val bottomPanel = JPanel().apply {
             layout = GridLayout(1, 2, 10, 10)
-            add(JButton("Draw!").apply {
+            add(JButton("Draw Teams").apply {
                 addActionListener {
-                    // Perform drawing in a background thread to avoid freezing
-                    Thread {
-                        val pots = potsFields.map { it.text.lines().map { it.trim() }.filter { it.isNotEmpty() } }
-                        if (pots.any { it.size < 2 }) {
-                            SwingUtilities.invokeLater {
-                                JOptionPane.showMessageDialog(this@PotsPanel, "Each pot must have at least 2 teams.")
-                            }
-                            return@Thread
+                    resultArea.text = ""
+
+                    // Function to generate group labels dynamically
+                    fun getGroupLabel(index: Int): String {
+                        val letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        var groupName = ""
+                        var tempIndex = index
+                        while (tempIndex >= 0) {
+                            groupName = letters[tempIndex % 26] + groupName
+                            tempIndex = tempIndex / 26 - 1
                         }
-                        val result = drawGroupsFromPots(pots)
-                        SwingUtilities.invokeLater {
-                            resultArea.text = result
+                        return "Group $groupName"
+                    }
+
+                    // Shuffle each pot to introduce randomness
+                    val pots = potsFields.map { it.text.lines().filter { team -> team.isNotEmpty() }.toMutableList().apply { shuffle() } }
+                    val groups = mutableListOf<MutableList<String>>()
+
+                    // Draw teams into groups while ensuring randomness
+                    while (pots.any { it.isNotEmpty() }) {
+                        val group = mutableListOf<String>()
+                        for (pot in pots) {
+                            if (pot.isNotEmpty()) group.add(pot.removeAt(0))
                         }
-                    }.start()
+                        groups.add(group)
+                    }
+
+                    // Generate group labels dynamically
+                    val groupLabels = groups.mapIndexed { index, group -> "${getGroupLabel(index)}: ${group.joinToString(", ")}" }
+
+                    resultArea.text = groupLabels.joinToString("\n\n")
                 }
             })
-            add(JButton("Return to Main").apply {
-                addActionListener {
-                    // Switch back to the main panel
-                    SwingUtilities.invokeLater {
-                        mainFrame.contentPane.removeAll()
-                        mainFrame.add(mainFrame.buttonPanel, BorderLayout.NORTH)
-                        mainFrame.add(mainFrame.inputPanel, BorderLayout.CENTER)
-                        mainFrame.revalidate()
-                        mainFrame.repaint()
-                    }
-                }
+            add(JButton("Return to Main Menu").apply {
+                addActionListener { coordinator.showMainPanel() }
             })
         }
 
-        // Add components to the panel
+
         add(topPanel, BorderLayout.NORTH)
-        add(JScrollPane(potsPanel), BorderLayout.CENTER)
+        add(JScrollPane(resultArea), BorderLayout.CENTER)
         add(bottomPanel, BorderLayout.SOUTH)
+        add(potsPanel, BorderLayout.EAST)
     }
 
     private fun createPotsFields(numPots: Int) {
-        val potsPanel = (getComponent(1) as JScrollPane).viewport.view as JPanel
         potsPanel.removeAll()
         potsFields.clear()
-
         for (i in 1..numPots) {
             val potField = JTextArea(5, 30).apply {
                 lineWrap = true
                 border = BorderFactory.createTitledBorder("Pot $i")
             }
             potsFields.add(potField)
-            potsPanel.add(potField)
-            potsPanel.add(Box.createVerticalStrut(10))
+            potsPanel.add(JScrollPane(potField))
         }
-
         potsPanel.revalidate()
         potsPanel.repaint()
     }
 
-    private fun drawGroupsFromPots(pots: List<List<String>>): String {
-        val groups = mutableListOf<MutableList<String>>()
-        val maxGroupSize = pots.maxOf { it.size }
-
-        for (i in 0 until maxGroupSize) {
-            pots.forEachIndexed { potIndex, pot ->
-                if (i < pot.size) {
-                    if (groups.size <= potIndex) {
-                        groups.add(mutableListOf())
-                    }
-                    groups[potIndex].add(pot[i])
-                }
-            }
-        }
-
-        return groups.joinToString("\n") { "Group: ${it.joinToString(", ")}" }
-    }
+    override fun updateUIContent() {}
 }

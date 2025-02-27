@@ -6,35 +6,34 @@ import java.awt.GridLayout
 import javax.swing.*
 import kotlin.random.Random
 
-class MainPanel : JFrame("Football Tournament Drawing") {
-
-    val textAreaTeams = JTextArea(5, 30).apply {
+class MainPanel(private val coordinator: PanelCoordinator) : BasePanel() {
+    private val textAreaTeams = JTextArea(5, 30).apply {
         lineWrap = true
         border = BorderFactory.createTitledBorder("Enter teams (one per line)")
     }
-    val scrollTeams = JScrollPane(textAreaTeams).apply {
+    private val scrollTeams = JScrollPane(textAreaTeams).apply {
         preferredSize = Dimension(450, 150)
     }
 
-    val textAreaPlayers = JTextArea(5, 30).apply {
+    private val textAreaPlayers = JTextArea(5, 30).apply {
         lineWrap = true
         border = BorderFactory.createTitledBorder("Enter players (one per line)")
     }
-    val scrollPlayers = JScrollPane(textAreaPlayers).apply {
+    private val scrollPlayers = JScrollPane(textAreaPlayers).apply {
         preferredSize = Dimension(450, 150)
     }
 
-    val resultArea = JTextArea(10, 30).apply {
+    private val resultArea = JTextArea(10, 30).apply {
         isEditable = false
         lineWrap = true
         border = BorderFactory.createTitledBorder("Results")
     }
-    val scrollResults = JScrollPane(resultArea).apply {
+    private val scrollResults = JScrollPane(resultArea).apply {
         preferredSize = Dimension(450, 200)
     }
 
-    val buttonPanel = JPanel().apply {
-        layout = GridLayout(1, 4, 10, 10)
+    private val buttonPanel = JPanel().apply {
+        layout = GridLayout(1, 5, 10, 10)
         add(JButton("Draw Knockout").apply {
             addActionListener {
                 val teamsList = textAreaTeams.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
@@ -62,13 +61,7 @@ class MainPanel : JFrame("Football Tournament Drawing") {
         })
         add(JButton("Draw Groups by Pots").apply {
             addActionListener {
-                // Switch to the pots panel
-                SwingUtilities.invokeLater {
-                    contentPane.removeAll()
-                    contentPane.add(PotsPanel(textAreaTeams.text, resultArea, this@MainPanel), BorderLayout.CENTER)
-                    revalidate()
-                    repaint()
-                }
+                coordinator.showPotsPanel()
             }
         })
         add(JButton("Assign Teams").apply {
@@ -86,21 +79,17 @@ class MainPanel : JFrame("Football Tournament Drawing") {
         })
     }
 
-    val inputPanel = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        add(scrollTeams)
-        add(Box.createVerticalStrut(10))
-        add(scrollPlayers)
-        add(Box.createVerticalStrut(10))
-        add(scrollResults)
+    init {
+        add(buttonPanel, BorderLayout.NORTH)
+        add(JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            add(scrollTeams)
+            add(Box.createVerticalStrut(10))
+            add(scrollPlayers)
+            add(Box.createVerticalStrut(10))
+            add(scrollResults)
+        }, BorderLayout.CENTER)
     }
 
-    init {
-        defaultCloseOperation = EXIT_ON_CLOSE
-        size = Dimension(700, 850)
-        isResizable = false
-        layout = BorderLayout()
-        add(buttonPanel, BorderLayout.NORTH)
-        add(inputPanel, BorderLayout.CENTER)
-    }
+    override fun updateUIContent() {}
 }
